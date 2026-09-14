@@ -40,8 +40,106 @@ const FORM_CONFIG = {
     estado: "compras-estado",
     submit: "compras-submit",
     status: "compras-status"
+  },
+  revision: {
+    nombreModulo: "Revisión previa de ruta",
+    screen: "screen-revision",
+    datetime: "revision-datetime",
+    preview: "revision-preview",
+    placeholder: "revision-placeholder",
+    camera: "revision-camera",
+    retake: "revision-retake",
+    submit: "revision-submit",
+    status: "revision-status"
   }
 };
+
+// ============================================================
+// CHECKLIST — REVISIÓN PREVIA DE RUTA
+// ============================================================
+const CHECKLIST_REVISION = [
+  {
+    titulo: "Neumáticos y ruedas",
+    nivel: "critico",
+    nivelTexto: "Crítico",
+    desc: "Garantizan estabilidad y seguridad en todo el trayecto.",
+    items: [
+      "Revisar presión de aire",
+      "Inspeccionar cortes, deformaciones o desgaste",
+      "Confirmar tuercas firmes",
+      "Verificar rueda de repuesto en condiciones"
+    ]
+  },
+  {
+    titulo: "Sistema de frenos",
+    nivel: "seguridad",
+    nivelTexto: "Seguridad",
+    desc: "Asegura capacidad de detener el vehículo en cualquier situación.",
+    items: [
+      "Comprobar nivel de aire en circuitos",
+      "Revisar balatas y funcionamiento",
+      "Detectar fugas",
+      "Probar freno de mano"
+    ]
+  },
+  {
+    titulo: "Luces y señalización",
+    desc: "Permiten visibilidad y comunicación con otros conductores.",
+    items: [
+      "Revisar faros delanteros y traseros",
+      "Probar intermitentes",
+      "Confirmar balizas"
+    ]
+  },
+  {
+    titulo: "Niveles de fluidos",
+    desc: "Evitan fallas mecánicas y sobrecalentamiento.",
+    items: [
+      "Chequear aceite del motor",
+      "Revisar refrigerante",
+      "Verificar líquido de frenos",
+      "Revisar hidráulico"
+    ]
+  },
+  {
+    titulo: "Parabrisas y limpiaparabrisas",
+    desc: "Mantienen visibilidad clara en condiciones adversas.",
+    items: [
+      "Limpiar vidrio y revisar grietas",
+      "Revisar estado de escobillas"
+    ]
+  },
+  {
+    titulo: "Suspensión y dirección",
+    desc: "Garantizan estabilidad y control del camión.",
+    items: [
+      "Observar fugas en amortiguadores",
+      "Revisar pernos sueltos",
+      "Detectar juego excesivo en dirección"
+    ]
+  },
+  {
+    titulo: "Carga y sujeción",
+    desc: "Evita riesgos en frenadas o curvas.",
+    items: [
+      "Confirmar distribución equilibrada",
+      "Revisar lonas, correas o sellos",
+      "Asegurar puertas y cierres"
+    ]
+  },
+  {
+    titulo: "Extintor y elementos de seguridad",
+    desc: "Proveen respuesta inmediata ante emergencias.",
+    items: [
+      "Extintor vigente",
+      "Triángulos de emergencia",
+      "Chaleco reflectante",
+      "Botiquín completo"
+    ]
+  }
+];
+
+let revisionEstado = [];
 
 function getFormConfig(modulo = "entregas") {
   return FORM_CONFIG[modulo] || FORM_CONFIG.entregas;
@@ -153,6 +251,13 @@ function goToModule(mod) {
   if (!FORM_CONFIG[mod]) return;
 
   moduloActivo = mod;
+
+  if (mod === "revision") {
+    resetFormRevision();
+    showScreen(getFormConfig(mod).screen);
+    return;
+  }
+
   resetFormEntregas(mod);
   showScreen(getFormConfig(mod).screen);
   activarSeleccionEstado(mod);
@@ -234,7 +339,148 @@ setInterval(() => {
   if (document.getElementById(FORM_CONFIG.proveedores.screen).classList.contains("active")) {
     actualizarDatetime("proveedores");
   }
+  if (document.getElementById(FORM_CONFIG.revision.screen).classList.contains("active")) {
+    actualizarDatetime("revision");
+  }
 }, 30000);
+
+// ============================================================
+// REVISIÓN PREVIA DE RUTA — CHECKLIST
+// ============================================================
+
+function resetFormRevision() {
+  const config = getFormConfig("revision");
+
+  document.getElementById("revision-chofer").textContent = usuarioActivo ? usuarioActivo.nombre : "—";
+  document.getElementById("revision-patente").textContent = localStorage.getItem("patente") || "—";
+
+  revisionEstado = CHECKLIST_REVISION.map(cat => ({
+    titulo: cat.titulo,
+    nivelTexto: cat.nivelTexto || "",
+    items: cat.items.map(texto => ({ texto, ok: false }))
+  }));
+
+  document.getElementById("revision-observaciones").value = "";
+
+  fotoBase64 = null;
+  document.getElementById(config.preview).src = "";
+  document.getElementById(config.preview).classList.add("hidden");
+  document.getElementById(config.placeholder).style.display = "flex";
+  document.getElementById(config.retake).style.display = "none";
+  document.getElementById(config.camera).value = "";
+
+  document.getElementById(config.status).classList.add("hidden");
+  document.getElementById(config.submit).disabled = false;
+
+  renderChecklistRevision();
+  actualizarDatetime("revision");
+}
+
+function renderChecklistRevision() {
+  const contenedor = document.getElementById("revision-checklist");
+  contenedor.innerHTML = revisionEstado.map((cat, catIdx) => `
+    <div class="revision-categoria">
+      <div class="revision-categoria-header">
+        <div class="revision-categoria-titulo">
+          <span class="revision-categoria-num">${catIdx + 1}</span>
+          ${cat.titulo}
+        </div>
+        ${cat.nivelTexto ? `<span class="revision-nivel ${cat.nivelTexto === "Crítico" ? "critico" : "seguridad"}">${cat.nivelTexto}</span>` : ""}
+      </div>
+      <div class="revision-categoria-desc">${CHECKLIST_REVISION[catIdx].desc}</div>
+      ${cat.items.map((item, itemIdx) => `
+        <label class="revision-item ${item.ok ? "checked" : ""}" data-cat="${catIdx}" data-item="${itemIdx}">
+          <input type="checkbox" ${item.ok ? "checked" : ""} onchange="toggleRevisionItem(${catIdx}, ${itemIdx})" />
+          <span>${item.texto}</span>
+        </label>
+      `).join("")}
+    </div>
+  `).join("");
+
+  actualizarProgresoRevision();
+}
+
+function toggleRevisionItem(catIdx, itemIdx) {
+  const item = revisionEstado[catIdx].items[itemIdx];
+  item.ok = !item.ok;
+  renderChecklistRevision();
+}
+
+function actualizarProgresoRevision() {
+  const total = revisionEstado.reduce((acc, cat) => acc + cat.items.length, 0);
+  const completados = revisionEstado.reduce(
+    (acc, cat) => acc + cat.items.filter(i => i.ok).length,
+    0
+  );
+
+  document.getElementById("revision-progreso-texto").textContent = `${completados} / ${total} completados`;
+  document.getElementById("revision-progreso-fill").style.width = `${total ? (completados / total) * 100 : 0}%`;
+}
+
+async function submitRevision() {
+  const config = getFormConfig("revision");
+  const total = revisionEstado.reduce((acc, cat) => acc + cat.items.length, 0);
+  const completados = revisionEstado.reduce(
+    (acc, cat) => acc + cat.items.filter(i => i.ok).length,
+    0
+  );
+
+  if (completados < total) {
+    alert(`Debes completar todos los puntos del checklist (${completados}/${total}).`);
+    return;
+  }
+  if (!fotoBase64) {
+    alert("Toma la foto del tablero.");
+    return;
+  }
+
+  const patente = localStorage.getItem("patente");
+  if (!usuarioActivo || !patente) {
+    alert("Falta información del chofer o la patente.");
+    return;
+  }
+
+  const payload = {
+    accion: "registrarRevisionRuta",
+    modulo: "revision_ruta",
+    chofer: usuarioActivo.nombre,
+    rol: usuarioActivo.rol,
+    patente,
+    fecha: new Date().toLocaleDateString("es-CL"),
+    hora: new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }),
+    checklist: revisionEstado,
+    observaciones: document.getElementById("revision-observaciones").value.trim(),
+    fotoBase64
+  };
+
+  const btn = document.getElementById(config.submit);
+  const status = document.getElementById(config.status);
+
+  btn.disabled = true;
+  btn.textContent = "Enviando...";
+  status.textContent = "⏳ Guardando...";
+  status.classList.remove("hidden");
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: new URLSearchParams({ data: JSON.stringify(payload) })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      document.getElementById("exito-guia").textContent = `Revisión — ${patente}`;
+      showScreen("screen-exito");
+    } else {
+      alert("Error al guardar: " + data.error);
+    }
+  } catch (e) {
+    alert("Error de conexión.");
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Registrar revisión`;
+}
 
 // ============================================================
 // FOTO 
@@ -410,7 +656,11 @@ const res = await fetch(APPS_SCRIPT_URL, {
   btn.textContent = "Registrar entrega";
 }
 function nuevaEntrega() {
-  resetFormEntregas(moduloActivo);
+  if (moduloActivo === "revision") {
+    resetFormRevision();
+  } else {
+    resetFormEntregas(moduloActivo);
+  }
   showScreen(getFormConfig(moduloActivo).screen);
 }
 function doLogout() {
