@@ -184,7 +184,8 @@ function registrarRevisionRuta(data) {
     var fecha = (data.fecha || "").toString().trim();
     var hora = (data.hora || "").toString().trim();
     var checklist = data.checklist || [];
-    var observaciones = (data.observaciones || "").toString().trim();
+    var odometro = (data.odometro || data.kilometraje || "").toString().trim();
+    var detalle = (data.detalle || data.observaciones || "").toString().trim();
     var foto64 = data.fotoBase64 || "";
 
     if (!chofer) {
@@ -195,6 +196,9 @@ function registrarRevisionRuta(data) {
     }
     if (!foto64) {
       return { ok: false, error: "Falta la foto del tablero" };
+    }
+    if (!odometro) {
+      return { ok: false, error: "Falta el odómetro" };
     }
 
     var totalItems = 0;
@@ -230,8 +234,9 @@ function registrarRevisionRuta(data) {
       patente,          // E Patente
       itemsOk,          // F Items OK
       totalItems,       // G Total items
-      observaciones,    // H Observaciones
-      file.getUrl()     // I Foto tablero (link)
+      odometro,         // H Odómetro
+      detalle,          // I Detalle
+      file.getUrl()     // J Foto tablero (link)
     ]);
 
     logAccion("revision_ruta", {
@@ -261,7 +266,7 @@ function getHojaRevisionRuta(ss) {
 function asegurarEncabezadosRevision(hoja) {
   var encabezados = [
     "Fecha", "Hora", "Chofer", "Rol", "Patente",
-    "Items OK", "Total items", "Observaciones", "Foto tablero (link)"
+    "Items OK", "Total items", "Odómetro", "Detalle", "Foto tablero (link)"
   ];
 
   if (hoja.getLastRow() === 0) {

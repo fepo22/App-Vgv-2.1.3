@@ -226,6 +226,72 @@ function showScreen(id) {
   window.scrollTo(0, 0);
 }
 
+function mostrarRecordatorioRevisionLunes() {
+  const hoy = new Date();
+  if (hoy.getDay() !== 1) return;
+
+  const modalExistente = document.getElementById("modal-revision-lunes");
+  if (modalExistente) return;
+
+  const overlay = document.createElement("div");
+  overlay.id = "modal-revision-lunes";
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.background = "rgba(10, 22, 29, 0.72)";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.zIndex = "99999";
+  overlay.style.padding = "20px";
+
+  const modal = document.createElement("div");
+  modal.style.width = "100%";
+  modal.style.maxWidth = "420px";
+  modal.style.background = "#ffffff";
+  modal.style.borderRadius = "18px";
+  modal.style.boxShadow = "0 20px 55px rgba(15, 81, 54, 0.28)";
+  modal.style.border = "2px solid #0f5136";
+  modal.style.padding = "24px 20px 18px";
+  modal.style.textAlign = "center";
+
+  const titulo = document.createElement("div");
+  titulo.textContent = "Revisión previa obligatoria";
+  titulo.style.fontSize = "22px";
+  titulo.style.fontWeight = "800";
+  titulo.style.color = "#0f5136";
+  titulo.style.marginBottom = "10px";
+
+  const texto = document.createElement("div");
+  texto.textContent = "Hoy es lunes. Antes de salir a ruta, debes completar la revisión previa del camión.";
+  texto.style.fontSize = "15px";
+  texto.style.lineHeight = "1.5";
+  texto.style.color = "#243244";
+  texto.style.marginBottom = "18px";
+
+  const boton = document.createElement("button");
+  boton.textContent = "Ir a revisión";
+  boton.style.width = "100%";
+  boton.style.padding = "12px 16px";
+  boton.style.border = "none";
+  boton.style.borderRadius = "12px";
+  boton.style.background = "linear-gradient(135deg, #0f5136 0%, #166f4d 45%, #1d8f60 100%)";
+  boton.style.color = "#ffffff";
+  boton.style.fontSize = "15px";
+  boton.style.fontWeight = "700";
+  boton.style.cursor = "pointer";
+  boton.style.boxShadow = "0 8px 18px rgba(15,81,54,0.18)";
+  boton.onclick = () => {
+    overlay.remove();
+    goToModule("revision");
+  };
+
+  modal.appendChild(titulo);
+  modal.appendChild(texto);
+  modal.appendChild(boton);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+
 function mostrarMenu() {
   if (!usuarioActivo) return;
 
@@ -244,6 +310,7 @@ function mostrarMenu() {
   document.getElementById("menu-fecha").innerHTML =
     `${ahora.toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" })}<br>${ahora.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}`;
 
+  mostrarRecordatorioRevisionLunes();
   showScreen("screen-menu");
 }
 
@@ -360,6 +427,7 @@ function resetFormRevision() {
     items: cat.items.map(texto => ({ texto, ok: false }))
   }));
 
+  document.getElementById("revision-odometro").value = "";
   document.getElementById("revision-observaciones").value = "";
 
   fotoBase64 = null;
@@ -434,11 +502,19 @@ async function submitRevision() {
     return;
   }
 
+  const odometro = document.getElementById("revision-odometro").value.trim();
+  if (!odometro) {
+    alert("Ingresa el odómetro para registrar la revisión.");
+    return;
+  }
+
   const patente = localStorage.getItem("patente");
   if (!usuarioActivo || !patente) {
     alert("Falta información del chofer o la patente.");
     return;
   }
+
+  const detalle = document.getElementById("revision-observaciones").value.trim();
 
   const payload = {
     accion: "registrarRevisionRuta",
@@ -448,8 +524,10 @@ async function submitRevision() {
     patente,
     fecha: new Date().toLocaleDateString("es-CL"),
     hora: new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }),
+    odometro,
     checklist: revisionEstado,
-    observaciones: document.getElementById("revision-observaciones").value.trim(),
+    detalle,
+    observaciones: detalle,
     fotoBase64
   };
 

@@ -151,25 +151,37 @@ input:focus-visible {
 
 .input-icon {
   position: absolute;
-  left: 11px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--texto-3);
+  color: #67708a;
+  opacity: 0.9;
 }
 
 .input-wrap input {
   width: 100%;
-  padding: 10px 12px 10px 36px;
+  padding: 12px 14px 12px 40px;
   border: 1.5px solid var(--borde);
   border-radius: var(--radio-sm);
-  font-size: 14px;
-  background: var(--fondo);
-  transition: border-color .2s, background .2s;
+  font-size: 15px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+  color: var(--texto);
+  background: #ffffff;
+  box-shadow: inset 0 1px 2px rgba(17,24,39,0.02);
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+
+.input-wrap input::placeholder {
+  color: #7a7f90;
+  font-weight: 400;
 }
 
 .input-wrap input:focus {
   border-color: var(--azul);
   background: white;
+  box-shadow: 0 0 0 4px rgba(26,75,140,0.08);
 }
 
 .login-error {
@@ -251,7 +263,19 @@ input:focus-visible {
 #screen-proveedores .app-body { max-width: 680px; }
 
 #screen-entregas .app-header {
-  background: linear-gradient(135deg, var(--azul-dark), var(--azul));
+  background: linear-gradient(135deg, #0e3d6b 0%, #1a5e9d 48%, #2d7ec8 100%);
+}
+#screen-entregas .app-body {
+  position: relative;
+}
+#screen-entregas .app-body::before {
+  content: "";
+  position: absolute;
+  inset: 8px 12px auto 12px;
+  height: 62px;
+  border-radius: 18px;
+  background: linear-gradient(90deg, rgba(26,94,157,0.10), rgba(45,126,200,0.04));
+  pointer-events: none;
 }
 #screen-proveedores .app-header {
   background: linear-gradient(135deg, #0f5136 0%, #166f4d 45%, #1d8f60 100%);
@@ -664,11 +688,13 @@ input:focus-visible {
 .btn-tipo-doc:last-of-type { margin-right: 0; }
 
 #screen-entregas .btn-tipo-doc.guia {
-    background-color: #1A4B8C;
+    background: linear-gradient(135deg, #0e3d6b, #1c5d96, #3a82cb);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
 }
 
 #screen-entregas .btn-tipo-doc.factura {
-    background-color: #FF9800;
+    background: linear-gradient(135deg, #9a611a, #c77d27, #ebb35d);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
 }
 
 #screen-proveedores .btn-tipo-doc.guia {
