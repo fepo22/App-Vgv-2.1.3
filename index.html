@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="theme-color" content="#0d47a1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VGV SpA — Portal Operaciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./style.css?v=20260904">
+  <link rel="manifest" href="./manifest.json">
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker-v4.js", {
+        scope: "./"
+      });
+    }
+  </script>
+</head>
+
+<body>
+
+  <!-- ===================== PANTALLA: LOGIN ===================== -->
+  <div id="screen-login" class="screen active">
+    <div class="login-bg">
+      <div class="login-pattern"></div>
+    </div>
+    <div class="login-card">
+      
+    <div class="login-logo">
+   <div class="logo-text">
+    <h1 class="logo-name">VGV SpA</h1>
+    <p class="logo-sub">Portal de Operaciones</p>
+  </div>
+</div>
+       <div class="login-form">
+        <div class="form-group">
+          <label class="form-label">Usuario</label>
+          <div class="input-wrap">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <input type="text" id="login-user" placeholder="nombre.apellido" autocomplete="username" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="login-pass">Contraseña</label>
+          <div class="input-wrap">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="patente">Patente</label>
+          <div class="input-wrap">
+            <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v10H3z"/><path d="M7 10h6M7 14h10"/></svg>
+            <input type="text" id="patente" placeholder="Ej: KT-XX-45" autocomplete="off" required />
+          </div>
+        </div>
+        <div id="login-error" class="login-error hidden">Usuario o contraseña incorrectos</div>
+        <button class="btn-primary" onclick="doLogin()">Ingresar</button>
+      </div>
+
+      <div class="login-version">v1.2 · VGV SpA © 2025</div>
+    </div>
+  </div>
+
+  <!-- ===================== PANTALLA: MENÚ ===================== -->
+  <div id="screen-menu" class="screen">
+    <div class="app-header">
+      <div class="header-left">
+        <div class="header-logo">VGV SpA</div>
+        <div class="header-sub">Portal de Operaciones</div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()" title="Cerrar sesión">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+
+    <div class="app-body">
+      <div class="user-card">
+        <div class="user-avatar" id="menu-avatar">JR</div>
+        <div class="user-info">
+          <div class="user-name" id="menu-nombre">Juan Rodríguez</div>
+          <div class="user-role" id="menu-rol">Repartidor</div>
+        </div>
+        <div class="user-date" id="menu-fecha"></div>
+      </div>
+
+      <div class="section-title">Módulos disponibles</div>
+
+      <div class="modules-grid">
+        <button class="module-card active-module" onclick="goToModule('entregas')" style="position:relative;">
+          <div class="module-icon" style="background: #1A4B8C15; color: #1A4B8C;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+          </div>
+          <div class="module-name">Entregas</div>
+          <div class="module-desc">Registro de despachos</div>
+          <div class="module-badge active-badge">Activo</div>
+          <span id="badge-pendientes" class="hidden" style="position:absolute;top:8px;right:8px;background:#c0392b;color:white;border-radius:999px;font-size:11px;font-weight:600;padding:2px 7px;min-width:20px;text-align:center;"></span>
+        </button>
+
+        <button class="module-card active-module" onclick="goToModule('proveedores')" style="position:relative;">
+          <div class="module-icon" style="background: #1a8c5a15; color: #1a8c5a;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18"/><path d="M5 21V5l7-3 7 3v16"/><path d="M9 21v-5h6v5"/><path d="M8 8h1M15 8h1M8 11h1M15 11h1"/></svg>
+          </div>
+          <div class="module-name">Proveedores / Compras</div>
+          <div class="module-desc">Registro de compras</div>
+          <div class="module-badge active-badge">Activo</div>
+        </button>
+      </div>
+    </div>
+  </div>
+   <!-- ===================== PANTALLA: ENTREGAS ===================== -->
+
+  <div id="screen-entregas" class="screen">
+    <div class="app-header">
+      <button class="btn-back" onclick="goBack('menu')" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="header-center">
+        <div class="header-logo">Entregas</div>
+        <div class="header-sub">Registro de despacho</div>
+      </div>
+      <div style="width:36px"></div>
+    </div>
+
+    <div class="app-body" id="form-body">
+
+<div class="tipo-doc-container">
+    <h3>Seleccione el tipo de documento</h3>
+
+    <button class="btn-tipo-doc guia" onclick="seleccionarTipo('guia')">
+        📦 Guía de despacho
+    </button>
+
+    <button class="btn-tipo-doc factura" onclick="seleccionarTipo('factura')">
+        🧾 Factura
+    </button>
+
+    <input type="hidden" id="tipoDocumento">
+</div>
+ 
+
+      <!-- Número de guía -->
+      <div class="field-section">
+        <label class="form-label">N° Guía de despacho</label>
+        <div class="input-wrap">
+          <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <input type="text" id="guia-numero" placeholder="Ej: GD-2025-0042" />
+        </div>
+      </div>
+
+      <!-- Fecha y hora automática -->
+      <div class="field-section">
+        <label class="form-label">Fecha y hora del registro</label>
+        <div class="datetime-display">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="datetime-auto"></span>
+        </div>
+      </div>
+
+ <!-- Foto -->
+<div class="field-section">
+  <label class="form-label">Foto</label>
+
+  <div class="photo-area" onclick="triggerCamera()">
+
+    <img id="photo-preview" class="photo-preview hidden" alt="Vista previa" />
+
+    <div id="photo-placeholder" class="photo-placeholder">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <span>Tomar foto o subir imagen</span>
+    </div>
+
+  </div>
+
+  <input 
+    type="file" 
+    id="camera-input" 
+    accept="image/*" 
+    capture="environment" 
+    class="hidden"
+    onchange="handlePhoto(event)"
+  />
+
+  <button class="btn-secondary" id="btn-retake" onclick="retakePhoto()" style="display:none; margin-top:6px;">
+    Tomar otra foto
+  </button>
+</div>
+
+
+     <!-- Estado de la entrega -->  
+            <div id="estado-opciones" class="estado-container">
+      <div class="estado-box" data-value="conforme">Conforme</div>
+      <div class="estado-box" data-value="revision">Sujeto a revisión</div>
+      <div class="estado-box" data-value="falta_material">Falta material</div>
+      </div>
+
+      <!-- Campo oculto donde guardamos el valor real -->
+        <input type="hidden" id="estado" value="">     
+            <!-- Botón registrar -->
+      <button class="btn-primary btn-submit" id="btn-submit" onclick="submitEntrega()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Registrar entrega
+      </button>
+
+      <div id="submit-status" class="submit-status hidden"></div>
+
+    </div>
+  </div>
+  <!-- ===================== PANTALLA: PROVEEDORES / COMPRAS ===================== -->
+
+  <div id="screen-proveedores" class="screen">
+    <div class="app-header">
+      <button class="btn-back" onclick="goBack('menu')" title="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="header-center">
+        <div class="header-logo">Proveedores / Compras</div>
+        <div class="header-sub">Registro de compra</div>
+      </div>
+      <div style="width:36px"></div>
+    </div>
+
+    <div class="app-body" id="compras-form-body">
+      <div class="tipo-doc-container">
+        <h3>Seleccione el tipo de documento</h3>
+        <button class="btn-tipo-doc guia" onclick="seleccionarTipo('guia', 'proveedores')">📦 Guía de despacho</button>
+        <button class="btn-tipo-doc factura" onclick="seleccionarTipo('factura', 'proveedores')">🧾 Factura</button>
+        <input type="hidden" id="compras-tipo-documento">
+      </div>
+
+      <div class="field-section">
+        <label class="form-label">N° de documento</label>
+        <div class="input-wrap">
+          <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <input type="text" id="compras-numero" placeholder="Ej: FAC-2025-0042">
+        </div>
+      </div>
+
+      <div class="field-section">
+        <label class="form-label">Fecha y hora del registro</label>
+        <div class="datetime-display">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="compras-datetime"></span>
+        </div>
+      </div>
+
+      <div class="field-section">
+        <label class="form-label">Foto</label>
+        <div class="photo-area" onclick="triggerCamera('proveedores')">
+          <img id="compras-preview" class="photo-preview hidden" alt="Vista previa">
+          <div id="compras-placeholder" class="photo-placeholder">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Tomar foto o subir imagen</span>
+          </div>
+        </div>
+        <input type="file" id="compras-camera" data-module="proveedores" accept="image/*" capture="environment" class="hidden" onchange="handlePhoto(event)">
+        <button class="btn-secondary" id="compras-retake" onclick="retakePhoto('proveedores')" style="display:none; margin-top:6px;">Tomar otra foto</button>
+      </div>
+
+      <div id="compras-estado-opciones" class="estado-container">
+        <div class="estado-box" data-value="conforme">Conforme</div>
+        <div class="estado-box" data-value="revision">Sujeto a revisión</div>
+        <div class="estado-box" data-value="falta_material">Falta material</div>
+      </div>
+      <input type="hidden" id="compras-estado" value="">
+      <button class="btn-primary btn-submit" id="compras-submit" onclick="submitEntrega('proveedores')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Registrar compra
+      </button>
+      <div id="compras-status" class="submit-status hidden"></div>
+    </div>
+  </div>
+  <!-- ===================== PANTALLA: ÉXITO ===================== -->
+  <div id="screen-exito" class="screen">
+    <div class="exito-wrap">
+      <div class="exito-icon">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div class="exito-title">¡Entrega registrada!</div>
+      <div class="exito-sub" id="exito-guia"></div>
+      <div class="exito-detail">Guardada en Google Drive correctamente</div>
+      <button class="btn-primary" onclick="nuevaEntrega()" style="margin-top: 2rem;">Nueva entrega</button>
+      <button class="btn-secondary" onclick="goBack('menu')" style="margin-top: 10px;">Volver al menú</button>
+    </div>
+  </div>
+  <script defer src="./script_v2.js?v=20260904"></script>
+</body>
+</html> 
+
