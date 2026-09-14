@@ -158,7 +158,8 @@ input:focus-visible {
   opacity: 0.9;
 }
 
-.input-wrap input {
+.input-wrap input,
+.input-wrap select {
   width: 100%;
   padding: 12px 14px 12px 40px;
   border: 1.5px solid var(--borde);
@@ -173,12 +174,18 @@ input:focus-visible {
   transition: border-color .2s, box-shadow .2s, background .2s;
 }
 
+.input-wrap select {
+  appearance: none;
+  cursor: pointer;
+}
+
 .input-wrap input::placeholder {
   color: #7a7f90;
   font-weight: 400;
 }
 
-.input-wrap input:focus {
+.input-wrap input:focus,
+.input-wrap select:focus {
   border-color: var(--azul);
   background: white;
   box-shadow: 0 0 0 4px rgba(26,75,140,0.08);

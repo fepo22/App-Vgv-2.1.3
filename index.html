@@ -40,7 +40,9 @@
           <label class="form-label">Usuario</label>
           <div class="input-wrap">
             <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            <input type="text" id="login-user" placeholder="nombre.apellido" autocomplete="username" />
+            <select id="login-user" autocomplete="username">
+              <option value="">Cargando usuarios...</option>
+            </select>
           </div>
         </div>
         <div class="form-group">
@@ -54,7 +56,9 @@
           <label class="form-label" for="patente">Patente</label>
           <div class="input-wrap">
             <svg class="input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v10H3z"/><path d="M7 10h6M7 14h10"/></svg>
-            <input type="text" id="patente" placeholder="Ej: KT-XX-45" autocomplete="off" required />
+            <select id="patente" autocomplete="off" required>
+              <option value="">Cargando patentes...</option>
+            </select>
           </div>
         </div>
         <div id="login-error" class="login-error hidden">Usuario o contraseña incorrectos</div>

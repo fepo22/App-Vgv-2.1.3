@@ -12,6 +12,10 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzP04DM6clsY4oU
 const REVIEW_PASS = "1234";
 const REVIEW_USER_ALIASES = ["admin1", "admin 1"];
 
+document.addEventListener("DOMContentLoaded", () => {
+  cargarOpcionesLogin();
+});
+
 const FORM_CONFIG = {
   entregas: {
     nombreModulo: "Entregas",
@@ -149,6 +153,67 @@ function getFormConfig(modulo = "entregas") {
 // ============================================================
 // LOGIN CON GOOGLE SHEETS
 // ============================================================
+
+async function cargarOpcionesLogin() {
+  await Promise.all([
+    cargarUsuariosLogin(),
+    cargarPatentesLogin()
+  ]);
+}
+
+async function cargarUsuariosLogin() {
+  const select = document.getElementById("login-user");
+  if (!select) return;
+
+  try {
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=getUsuarios`);
+    const data = await res.json();
+    let usuarios = data.ok && data.usuarios ? data.usuarios : [];
+
+    if (!usuarios.length) {
+      const fallbackRes = await fetch(`${APPS_SCRIPT_URL}?action=getChoferes`);
+      const fallbackData = await fallbackRes.json();
+      usuarios = fallbackData.ok && fallbackData.choferes ? fallbackData.choferes : [];
+    }
+
+    llenarSelect(select, usuarios, "Selecciona usuario", usuario => ({
+      value: usuario.usuario,
+      text: `${usuario.nombre || usuario.usuario} (${usuario.rol || "Sin rol"})`
+    }));
+  } catch (e) {
+    select.innerHTML = '<option value="">No se pudieron cargar usuarios</option>';
+  }
+}
+
+async function cargarPatentesLogin() {
+  const select = document.getElementById("patente");
+  if (!select) return;
+
+  try {
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=getCamiones`);
+    const data = await res.json();
+    const camiones = data.ok && data.camiones ? data.camiones : [];
+
+    llenarSelect(select, camiones, "Selecciona patente", camion => ({
+      value: camion.patente,
+      text: camion.modelo ? `${camion.patente} - ${camion.modelo}` : camion.patente
+    }));
+  } catch (e) {
+    select.innerHTML = '<option value="">No se pudieron cargar patentes</option>';
+  }
+}
+
+function llenarSelect(select, items, placeholder, mapItem) {
+  const opciones = [`<option value="">${placeholder}</option>`];
+
+  items.forEach(item => {
+    const option = mapItem(item);
+    if (!option.value) return;
+    opciones.push(`<option value="${escapeHtml(option.value)}">${escapeHtml(option.text)}</option>`);
+  });
+
+  select.innerHTML = opciones.join("");
+}
 
 async function doLogin() {
   const user = document.getElementById("login-user").value.trim();

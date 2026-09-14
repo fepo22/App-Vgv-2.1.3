@@ -393,6 +393,7 @@ function buscarAsignacionCompraActiva(conductor, patente, usuarioLogin) {
     if (!hoja || hoja.getLastRow() < 2) return null;
 
     var rows = hoja.getDataRange().getValues();
+    var columnas = resolverColumnasRutasCompras(rows[0]);
     var conductoresEsperados = [normalizarClave(conductor), normalizarClave(usuarioLogin)].filter(function (valor) {
       return valor.length >= 6;
     });
@@ -400,10 +401,10 @@ function buscarAsignacionCompraActiva(conductor, patente, usuarioLogin) {
 
     for (var i = 1; i < rows.length; i++) {
       var row = rows[i];
-      var patenteRuta = normalizarClave(row[0]);
-      var conductorRuta = normalizarClave(row[1]);
-      var guiaProveedor = (row[5] || "").toString().trim();
-      var fotoGuia = (row[6] || "").toString().trim();
+      var patenteRuta = normalizarClave(row[columnas.patente]);
+      var conductorRuta = normalizarClave(row[columnas.conductor]);
+      var guiaProveedor = (row[columnas.guiaProveedor] || "").toString().trim();
+      var fotoGuia = (row[columnas.fotoGuia] || "").toString().trim();
 
       var coincidePatente = patenteNormalizada && patenteRuta === patenteNormalizada;
       var coincideConductor = conductorRuta.length >= 6 && conductoresEsperados.some(function (valor) {
@@ -413,11 +414,11 @@ function buscarAsignacionCompraActiva(conductor, patente, usuarioLogin) {
       if ((coincidePatente || coincideConductor) && (!guiaProveedor || !fotoGuia)) {
         return {
           fila: i + 1,
-          patente: row[0] || "",
-          conductor: row[1] || "",
-          proveedor: row[2] || "",
-          fechaRetiro: formatearFechaHoja(row[3]),
-          fechaEntregaObra: formatearFechaHoja(row[4])
+          patente: row[columnas.patente] || "",
+          conductor: row[columnas.conductor] || "",
+          proveedor: row[columnas.proveedor] || "",
+          fechaRetiro: formatearFechaHoja(row[columnas.fechaRetiro]),
+          fechaEntregaObra: formatearFechaHoja(row[columnas.fechaEntregaObra])
         };
       }
     }
@@ -434,8 +435,92 @@ function actualizarAsignacionCompra(fila, guiaProveedor, fotoGuiaUrl) {
   var hoja = getHojaRutasCompras(ss);
   if (!hoja || fila < 2) return;
 
-  hoja.getRange(fila, 6).setValue(guiaProveedor);
-  hoja.getRange(fila, 7).setValue(fotoGuiaUrl);
+  var encabezados = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var columnas = resolverColumnasRutasCompras(encabezados);
+
+  hoja.getRange(fila, columnas.guiaProveedor + 1).setValue(guiaProveedor);
+  hoja.getRange(fila, columnas.fotoGuia + 1).setValue(fotoGuiaUrl);
+}
+
+function resolverColumnasRutasCompras(encabezados) {
+  var mapa = {};
+
+  for (var i = 0; i < encabezados.length; i++) {
+    mapa[normalizarClave(encabezados[i])] = i;
+  }
+
+  return {
+    patente: mapa.patente !== undefined ? mapa.patente : 0,
+    conductor: mapa.conductor !== undefined ? mapa.conductor : 1,
+    proveedor: mapa.proveedor !== undefined ? mapa.proveedor : 2,
+    fechaRetiro: mapa.fecharetiro !== undefined ? mapa.fecharetiro : 3,
+    fechaEntregaObra: mapa.fechaentregaobra !== undefined ? mapa.fechaentregaobra : 4,
+    guiaProveedor: mapa.guiaproveedor !== undefined ? mapa.guiaproveedor : 5,
+    fotoGuia: mapa.fotoguia !== undefined ? mapa.fotoguia : 6
+  };
+}
+
+function diagnosticarRutaCompra(params) {
+  try {
+    var conductor = (params.conductor || "").toString().trim();
+    var usuarioLogin = (params.usuario || "").toString().trim();
+    var patente = (params.patente || "").toString().trim();
+    var ss = SpreadsheetApp.openById(PLANILLA_RUTAS_COMPRAS_ID);
+    var hoja = getHojaRutasCompras(ss);
+
+    if (!hoja) {
+      return { ok: false, error: "No se encontró la hoja de planificación" };
+    }
+
+    var rows = hoja.getDataRange().getValues();
+    var columnas = resolverColumnasRutasCompras(rows[0] || []);
+    var conductoresEsperados = [normalizarClave(conductor), normalizarClave(usuarioLogin)].filter(function (valor) {
+      return valor.length >= 6;
+    });
+    var patenteNormalizada = normalizarClave(patente);
+    var filas = [];
+
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      var patenteRuta = normalizarClave(row[columnas.patente]);
+      var conductorRuta = normalizarClave(row[columnas.conductor]);
+      var guiaProveedor = (row[columnas.guiaProveedor] || "").toString().trim();
+      var fotoGuia = (row[columnas.fotoGuia] || "").toString().trim();
+      var coincidePatente = patenteNormalizada && patenteRuta === patenteNormalizada;
+      var coincideConductor = conductorRuta.length >= 6 && conductoresEsperados.some(function (valor) {
+        return conductorRuta === valor || conductorRuta.indexOf(valor) !== -1 || valor.indexOf(conductorRuta) !== -1;
+      });
+
+      if (patenteRuta || conductorRuta || row[columnas.proveedor]) {
+        filas.push({
+          fila: i + 1,
+          patente: row[columnas.patente] || "",
+          conductor: row[columnas.conductor] || "",
+          proveedor: row[columnas.proveedor] || "",
+          guiaProveedor: guiaProveedor,
+          fotoGuia: fotoGuia,
+          coincidePatente: !!coincidePatente,
+          coincideConductor: !!coincideConductor,
+          pendiente: !guiaProveedor || !fotoGuia
+        });
+      }
+    }
+
+    return {
+      ok: true,
+      spreadsheetId: PLANILLA_RUTAS_COMPRAS_ID,
+      hoja: hoja.getName(),
+      sheetId: hoja.getSheetId(),
+      columnas: columnas,
+      conductorNormalizado: normalizarClave(conductor),
+      usuarioNormalizado: normalizarClave(usuarioLogin),
+      patenteNormalizada: patenteNormalizada,
+      asignacion: buscarAsignacionCompraActiva(conductor, patente, usuarioLogin),
+      filas: filas.slice(0, 20)
+    };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 }
 
 function normalizarClave(valor) {
@@ -652,12 +737,20 @@ function doGet(e) {
       return output.setContent(JSON.stringify(getChoferes()));
     }
 
+    if (action === "getUsuarios") {
+      return output.setContent(JSON.stringify(getUsuarios()));
+    }
+
     if (action === "getCamiones") {
       return output.setContent(JSON.stringify(getCamiones()));
     }
 
     if (action === "getProveedores") {
       return output.setContent(JSON.stringify(getProveedores()));
+    }
+
+    if (action === "diagnosticarRutaCompra") {
+      return output.setContent(JSON.stringify(diagnosticarRutaCompra(e.parameter || {})));
     }
 
     return output.setContent(JSON.stringify({
@@ -676,6 +769,35 @@ function doGet(e) {
 // ============================================================
 // CHOFERES DESDE HOJA USUARIOS
 // ============================================================
+function getUsuarios() {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_LOGIN_ID);
+    const sh = ss.getSheetByName("Usuarios") || getHojaLogin(ss);
+    const data = sh.getDataRange().getValues();
+
+    const usuarios = [];
+
+    for (let i = 1; i < data.length; i++) {
+      const usuario = data[i][0];
+      const nombre = data[i][2];
+      const rol = data[i][3];
+
+      if (usuario && nombre) {
+        usuarios.push({
+          usuario: usuario,
+          nombre: nombre,
+          rol: rol || ""
+        });
+      }
+    }
+
+    return { ok: true, usuarios: usuarios };
+
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
 function getChoferes() {
   try {
     const ss = SpreadsheetApp.openById(SHEET_LOGIN_ID);
