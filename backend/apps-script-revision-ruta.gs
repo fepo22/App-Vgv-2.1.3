@@ -10,7 +10,9 @@ const SHEET_LOGIN_ID    = "14dsVF9EppWfPNUBwNssNh3Jvzi55VbvZam1d9dwynwM";
 const SHEET_LOGIN_GID   = 0;
 const HOJA_ENTREGAS     = "Entregas";
 const HOJA_ENTREGAS_GID = 2040395718;
-const HOJA_RUTAS_COMPRAS = "RutasCompras";
+const PLANILLA_RUTAS_COMPRAS_ID = "1aYEK4dwxhkhlorgjAauH7_Ng1axc-kGrg5HjpTQtZnI";
+const HOJA_RUTAS_COMPRAS_GID = 0;
+const HOJA_RUTAS_COMPRAS = "Planificacion de Ruta";
 const FOLDER_FOTOS_ID   = "16T8fmZkK_9Oen3i_otL3F2kCofMKkSIP";
 const FOLDER_FOTOS_NAME = "VGV_Fotos_Entregas";
 
@@ -366,19 +368,27 @@ function getHojaEntregas(ss) {
 }
 
 function getHojaRutasCompras(ss) {
-  var nombres = [HOJA_RUTAS_COMPRAS, "Rutas Compras", "Rutas compras", "ComprasRutas", "Compras Rutas"];
+  var hojas = ss.getSheets();
 
-  for (var i = 0; i < nombres.length; i++) {
-    var hoja = ss.getSheetByName(nombres[i]);
+  for (var i = 0; i < hojas.length; i++) {
+    if (hojas[i].getSheetId() === HOJA_RUTAS_COMPRAS_GID) {
+      return hojas[i];
+    }
+  }
+
+  var nombres = [HOJA_RUTAS_COMPRAS, "RutasCompras", "Rutas Compras", "Rutas compras", "ComprasRutas", "Compras Rutas"];
+
+  for (var j = 0; j < nombres.length; j++) {
+    var hoja = ss.getSheetByName(nombres[j]);
     if (hoja) return hoja;
   }
 
-  return null;
+  return hojas[0] || null;
 }
 
 function buscarAsignacionCompraActiva(conductor, patente) {
   try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var ss = SpreadsheetApp.openById(PLANILLA_RUTAS_COMPRAS_ID);
     var hoja = getHojaRutasCompras(ss);
     if (!hoja || hoja.getLastRow() < 2) return null;
 
@@ -416,7 +426,7 @@ function buscarAsignacionCompraActiva(conductor, patente) {
 }
 
 function actualizarAsignacionCompra(fila, guiaProveedor, fotoGuiaUrl) {
-  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var ss = SpreadsheetApp.openById(PLANILLA_RUTAS_COMPRAS_ID);
   var hoja = getHojaRutasCompras(ss);
   if (!hoja || fila < 2) return;
 
