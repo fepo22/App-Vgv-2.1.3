@@ -6,6 +6,8 @@ console.log("✅ script_v2.js cargado correctamente");
 let usuarioActivo = null;
 let fotoBase64 = null;
 let moduloActivo = "entregas";
+let compraAsignada = null;
+let revisionRutaCompletaHoy = false;
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzP04DM6clsY4oUASPu3HDRLdFlsjk4EwORNVcYMlC4hNPaPr2W4KsUGNOoecXJIUCr/exec";
 const REVIEW_PASS = "1234";
 const REVIEW_USER_ALIASES = ["admin1", "admin 1"];
@@ -168,8 +170,11 @@ async function doLogin() {
   if (isReviewUser && pass === REVIEW_PASS) {
     usuarioActivo = {
       nombre: "Admin Revision",
-      rol: "Administrador"
+      rol: "Administrador",
+      asignacionCompra: null
     };
+    compraAsignada = null;
+    revisionRutaCompletaHoy = true;
 
     if (patente) {
       localStorage.setItem("patente", patente);
@@ -192,7 +197,7 @@ async function doLogin() {
   `; 
 try {
   const url = APPS_SCRIPT_URL;
-    const payload = { accion: "login", usuario: user, password: pass };
+    const payload = { accion: "login", usuario: user, password: pass, patente };
     const res = await fetch(url, {
       method: "POST",
       body: new URLSearchParams({ data: JSON.stringify(payload) })
@@ -201,6 +206,8 @@ try {
 
     if (data.ok) {
       usuarioActivo = data.usuario;
+      compraAsignada = data.usuario.asignacionCompra || null;
+      revisionRutaCompletaHoy = !!data.usuario.revisionRutaCompletaHoy || revisionRutaEstaMarcadaHoy(patente);
       localStorage.setItem("patente", patente);
       mostrarMenu();
     } else {
@@ -226,9 +233,36 @@ function showScreen(id) {
   window.scrollTo(0, 0);
 }
 
+function fechaLocalClave(fecha = new Date()) {
+  const ajustada = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000);
+  return ajustada.toISOString().slice(0, 10);
+}
+
+function getRevisionRutaKey(patente = localStorage.getItem("patente")) {
+  const usuario = usuarioActivo && usuarioActivo.nombre ? usuarioActivo.nombre : "sin-usuario";
+  const patenteClave = patente || "sin-patente";
+  return `revisionRuta:${fechaLocalClave()}:${usuario}:${patenteClave}`.toLowerCase();
+}
+
+function revisionRutaEstaMarcadaHoy(patente) {
+  return localStorage.getItem(getRevisionRutaKey(patente)) === "completa";
+}
+
+function marcarRevisionRutaCompletaHoy(patente = localStorage.getItem("patente")) {
+  revisionRutaCompletaHoy = true;
+  localStorage.setItem(getRevisionRutaKey(patente), "completa");
+}
+
+function esLunesRevisionObligatoria() {
+  return new Date().getDay() === 1 && !usuarioEsAdministrador();
+}
+
+function debeCompletarRevisionRuta() {
+  return esLunesRevisionObligatoria() && !revisionRutaCompletaHoy;
+}
+
 function mostrarRecordatorioRevisionLunes() {
-  const hoy = new Date();
-  if (hoy.getDay() !== 1) return;
+  if (!debeCompletarRevisionRuta()) return;
 
   const modalExistente = document.getElementById("modal-revision-lunes");
   if (modalExistente) return;
@@ -310,12 +344,83 @@ function mostrarMenu() {
   document.getElementById("menu-fecha").innerHTML =
     `${ahora.toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" })}<br>${ahora.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}`;
 
+  actualizarModuloProveedores();
+
   mostrarRecordatorioRevisionLunes();
   showScreen("screen-menu");
 }
 
+function usuarioEsAdministrador() {
+  const rol = usuarioActivo && usuarioActivo.rol ? usuarioActivo.rol.toLowerCase() : "";
+  return rol.includes("admin");
+}
+
+function puedeUsarModuloProveedores() {
+  return usuarioEsAdministrador() || !!compraAsignada;
+}
+
+function actualizarModuloProveedores() {
+  const card = document.querySelector('.module-card[data-module="proveedores"]');
+  if (!card) return;
+
+  const visible = puedeUsarModuloProveedores();
+  card.classList.toggle("hidden", !visible);
+
+  const badge = card.querySelector(".module-badge");
+  if (badge) {
+    badge.textContent = compraAsignada ? "Ruta asignada" : "Activo";
+  }
+}
+
+function renderAsignacionCompra() {
+  const panel = document.getElementById("compras-asignacion");
+  if (!panel) return;
+
+  if (!compraAsignada) {
+    panel.classList.add("hidden");
+    panel.innerHTML = "";
+    return;
+  }
+
+  panel.classList.remove("hidden");
+  panel.innerHTML = `
+    <div class="asignacion-item">
+      <span class="asignacion-label">Proveedor</span>
+      <span class="asignacion-valor">${escapeHtml(compraAsignada.proveedor || "—")}</span>
+    </div>
+    <div class="asignacion-item">
+      <span class="asignacion-label">Retiro</span>
+      <span class="asignacion-valor">${escapeHtml(compraAsignada.fechaRetiro || "—")}</span>
+    </div>
+    <div class="asignacion-item">
+      <span class="asignacion-label">Entrega obra</span>
+      <span class="asignacion-valor">${escapeHtml(compraAsignada.fechaEntregaObra || "—")}</span>
+    </div>
+  `;
+}
+
+function escapeHtml(valor) {
+  return valor.toString().replace(/[&<>'"]/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;"
+  }[char]));
+}
+
 function goToModule(mod) {
   if (!FORM_CONFIG[mod]) return;
+
+  if (mod !== "revision" && debeCompletarRevisionRuta()) {
+    mostrarRecordatorioRevisionLunes();
+    return;
+  }
+
+  if (mod === "proveedores" && !puedeUsarModuloProveedores()) {
+    alert("No tienes una ruta de compra asignada para este camión.");
+    return;
+  }
 
   moduloActivo = mod;
 
@@ -327,6 +432,7 @@ function goToModule(mod) {
 
   resetFormEntregas(mod);
   showScreen(getFormConfig(mod).screen);
+  if (mod === "proveedores") renderAsignacionCompra();
   activarSeleccionEstado(mod);
 }
 
@@ -547,8 +653,9 @@ async function submitRevision() {
     const data = await res.json();
 
     if (data.ok) {
+      marcarRevisionRutaCompletaHoy(patente);
       document.getElementById("exito-guia").textContent = `Revisión — ${patente}`;
-      showScreen("screen-exito");
+      mostrarMenu();
     } else {
       alert("Error al guardar: " + data.error);
     }
@@ -696,6 +803,7 @@ async function submitEntrega(modulo = moduloActivo) {
   tipoDocumento,
   modulo: modulo === "proveedores" ? "proveedores_compras" : "entregas",
   moduloOrigen,
+  asignacionCompra: modulo === "proveedores" ? compraAsignada : null,
   usuario: usuarioActivo.nombre,
   rol: usuarioActivo.rol,
   fecha: new Date().toLocaleDateString("es-CL"),
@@ -744,6 +852,8 @@ function nuevaEntrega() {
 function doLogout() {
   // Limpia datos del usuario
   usuarioActivo = null;
+  compraAsignada = null;
+  revisionRutaCompletaHoy = false;
   localStorage.removeItem("patente");
 
   // Muestra mensaje visual

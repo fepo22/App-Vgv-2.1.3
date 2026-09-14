@@ -10,6 +10,7 @@ const SHEET_LOGIN_ID    = "14dsVF9EppWfPNUBwNssNh3Jvzi55VbvZam1d9dwynwM";
 const SHEET_LOGIN_GID   = 0;
 const HOJA_ENTREGAS     = "Entregas";
 const HOJA_ENTREGAS_GID = 2040395718;
+const HOJA_RUTAS_COMPRAS = "RutasCompras";
 const FOLDER_FOTOS_ID   = "16T8fmZkK_9Oen3i_otL3F2kCofMKkSIP";
 const FOLDER_FOTOS_NAME = "VGV_Fotos_Entregas";
 
@@ -63,6 +64,7 @@ function doPost(e) {
 function login(data) {
   const usuario = (data.usuario || "").toString().trim().toLowerCase();
   const password = (data.password || "").toString().trim();
+  const patente = (data.patente || "").toString().trim();
 
   try {
     const ss = SpreadsheetApp.openById(SHEET_LOGIN_ID);
@@ -77,12 +79,17 @@ function login(data) {
       var rol = (row[3] || "").toString().trim();
 
       if (user === usuario && pass === password) {
+        var asignacionCompra = buscarAsignacionCompraActiva(nombre, patente);
+        var revisionRutaCompletaHoy = buscarRevisionRutaCompletaHoy(nombre, patente);
+
         logAccion("login", { usuario: usuario });
         return {
           ok: true,
           usuario: {
             nombre: nombre,
-            rol: rol
+            rol: rol,
+            asignacionCompra: asignacionCompra,
+            revisionRutaCompletaHoy: revisionRutaCompletaHoy
           }
         };
       }
@@ -115,6 +122,7 @@ function registrarEntrega(data) {
     var patente = (data.patente || "").toString().trim();
     var tipoDocumento = (data.tipoDocumento || "").toString().trim();
     var moduloOrigen = normalizarModuloOrigen(data.moduloOrigen || data.modulo || "");
+    var asignacionCompra = data.asignacionCompra || null;
     var foto64 = data.fotoBase64 || "";
 
     if (!numero) {
@@ -149,6 +157,10 @@ function registrarEntrega(data) {
       file.getUrl(),  // I Archivo
       moduloOrigen    // J Módulo
     ]);
+
+    if (moduloOrigen === "Proveedores / Compras" && asignacionCompra && asignacionCompra.fila) {
+      actualizarAsignacionCompra(asignacionCompra.fila, numero, file.getUrl());
+    }
 
     logAccion("entrega", {
       numero: numero,
@@ -351,6 +363,131 @@ function getHojaEntregas(ss) {
   }
 
   return ss.insertSheet(HOJA_ENTREGAS);
+}
+
+function getHojaRutasCompras(ss) {
+  var nombres = [HOJA_RUTAS_COMPRAS, "Rutas Compras", "Rutas compras", "ComprasRutas", "Compras Rutas"];
+
+  for (var i = 0; i < nombres.length; i++) {
+    var hoja = ss.getSheetByName(nombres[i]);
+    if (hoja) return hoja;
+  }
+
+  return null;
+}
+
+function buscarAsignacionCompraActiva(conductor, patente) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var hoja = getHojaRutasCompras(ss);
+    if (!hoja || hoja.getLastRow() < 2) return null;
+
+    var rows = hoja.getDataRange().getValues();
+    var conductorNormalizado = normalizarClave(conductor);
+    var patenteNormalizada = normalizarClave(patente);
+
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      var patenteRuta = normalizarClave(row[0]);
+      var conductorRuta = normalizarClave(row[1]);
+      var guiaProveedor = (row[5] || "").toString().trim();
+      var fotoGuia = (row[6] || "").toString().trim();
+
+      var coincidePatente = patenteNormalizada && patenteRuta === patenteNormalizada;
+      var coincideConductor = conductorNormalizado && conductorRuta === conductorNormalizado;
+
+      if ((coincidePatente || coincideConductor) && (!guiaProveedor || !fotoGuia)) {
+        return {
+          fila: i + 1,
+          patente: row[0] || "",
+          conductor: row[1] || "",
+          proveedor: row[2] || "",
+          fechaRetiro: formatearFechaHoja(row[3]),
+          fechaEntregaObra: formatearFechaHoja(row[4])
+        };
+      }
+    }
+
+    return null;
+  } catch (err) {
+    logError(err, "buscarAsignacionCompraActiva");
+    return null;
+  }
+}
+
+function actualizarAsignacionCompra(fila, guiaProveedor, fotoGuiaUrl) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var hoja = getHojaRutasCompras(ss);
+  if (!hoja || fila < 2) return;
+
+  hoja.getRange(fila, 6).setValue(guiaProveedor);
+  hoja.getRange(fila, 7).setValue(fotoGuiaUrl);
+}
+
+function normalizarClave(valor) {
+  return (valor || "")
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[-.]/g, "");
+}
+
+function formatearFechaHoja(valor) {
+  if (Object.prototype.toString.call(valor) === "[object Date]" && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(valor, Session.getScriptTimeZone(), "dd-MM-yyyy");
+  }
+
+  return (valor || "").toString().trim();
+}
+
+function buscarRevisionRutaCompletaHoy(chofer, patente) {
+  try {
+    var ss = SpreadsheetApp.openById(PLANILLA_REVISION_ID);
+    var hoja = getHojaRevisionRuta(ss);
+    if (!hoja || hoja.getLastRow() < 2) return false;
+
+    var rows = hoja.getDataRange().getValues();
+    var hoy = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd");
+    var choferNormalizado = normalizarClave(chofer);
+    var patenteNormalizada = normalizarClave(patente);
+
+    for (var i = rows.length - 1; i >= 1; i--) {
+      var row = rows[i];
+      var fechaRuta = normalizarFechaRevision(row[0]);
+      var choferRuta = normalizarClave(row[2]);
+      var patenteRuta = normalizarClave(row[4]);
+
+      if (fechaRuta === hoy && choferRuta === choferNormalizado && patenteRuta === patenteNormalizada) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch (err) {
+    logError(err, "buscarRevisionRutaCompletaHoy");
+    return false;
+  }
+}
+
+function normalizarFechaRevision(valor) {
+  if (Object.prototype.toString.call(valor) === "[object Date]" && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(valor, Session.getScriptTimeZone(), "yyyyMMdd");
+  }
+
+  var texto = (valor || "").toString().trim();
+  var partes = texto.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+
+  if (partes) {
+    return partes[3] + completarDosDigitos(partes[2]) + completarDosDigitos(partes[1]);
+  }
+
+  return texto.replace(/\D/g, "");
+}
+
+function completarDosDigitos(valor) {
+  valor = valor.toString();
+  return valor.length === 1 ? "0" + valor : valor;
 }
 
 function getHojaLogin(ss) {

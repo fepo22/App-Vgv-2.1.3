@@ -100,7 +100,7 @@
           <span id="badge-pendientes" class="hidden" style="position:absolute;top:8px;right:8px;background:#c0392b;color:white;border-radius:999px;font-size:11px;font-weight:600;padding:2px 7px;min-width:20px;text-align:center;"></span>
         </button>
 
-        <button class="module-card active-module" data-module="proveedores" onclick="goToModule('proveedores')" style="position:relative;">
+        <button class="module-card active-module hidden" data-module="proveedores" onclick="goToModule('proveedores')" style="position:relative;">
           <div class="module-icon" style="background: #1a8c5a15; color: #1a8c5a;">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18"/><path d="M5 21V5l7-3 7 3v16"/><path d="M9 21v-5h6v5"/><path d="M8 8h1M15 8h1M8 11h1M15 11h1"/></svg>
           </div>
@@ -236,6 +236,8 @@
     </div>
 
     <div class="app-body" id="compras-form-body">
+      <div id="compras-asignacion" class="revision-asignacion hidden"></div>
+
       <div class="tipo-doc-container">
         <h3>Seleccione el tipo de documento</h3>
         <button class="btn-tipo-doc guia" onclick="seleccionarTipo('guia', 'proveedores')">📦 Guía de despacho</button>
