@@ -81,7 +81,7 @@ function login(data) {
       var rol = (row[3] || "").toString().trim();
 
       if (user === usuario && pass === password) {
-        var asignacionCompra = buscarAsignacionCompraActiva(nombre, patente);
+        var asignacionCompra = buscarAsignacionCompraActiva(nombre, patente, usuario);
         var revisionRutaCompletaHoy = buscarRevisionRutaCompletaHoy(nombre, patente);
 
         logAccion("login", { usuario: usuario });
@@ -386,14 +386,16 @@ function getHojaRutasCompras(ss) {
   return hojas[0] || null;
 }
 
-function buscarAsignacionCompraActiva(conductor, patente) {
+function buscarAsignacionCompraActiva(conductor, patente, usuarioLogin) {
   try {
     var ss = SpreadsheetApp.openById(PLANILLA_RUTAS_COMPRAS_ID);
     var hoja = getHojaRutasCompras(ss);
     if (!hoja || hoja.getLastRow() < 2) return null;
 
     var rows = hoja.getDataRange().getValues();
-    var conductorNormalizado = normalizarClave(conductor);
+    var conductoresEsperados = [normalizarClave(conductor), normalizarClave(usuarioLogin)].filter(function (valor) {
+      return valor.length >= 6;
+    });
     var patenteNormalizada = normalizarClave(patente);
 
     for (var i = 1; i < rows.length; i++) {
@@ -404,7 +406,9 @@ function buscarAsignacionCompraActiva(conductor, patente) {
       var fotoGuia = (row[6] || "").toString().trim();
 
       var coincidePatente = patenteNormalizada && patenteRuta === patenteNormalizada;
-      var coincideConductor = conductorNormalizado && conductorRuta === conductorNormalizado;
+      var coincideConductor = conductorRuta.length >= 6 && conductoresEsperados.some(function (valor) {
+        return conductorRuta === valor || conductorRuta.indexOf(valor) !== -1 || valor.indexOf(conductorRuta) !== -1;
+      });
 
       if ((coincidePatente || coincideConductor) && (!guiaProveedor || !fotoGuia)) {
         return {
@@ -437,10 +441,11 @@ function actualizarAsignacionCompra(fila, guiaProveedor, fotoGuiaUrl) {
 function normalizarClave(valor) {
   return (valor || "")
     .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, " ")
-    .replace(/[-.]/g, "");
+    .replace(/[^a-z0-9]/g, "");
 }
 
 function formatearFechaHoja(valor) {
