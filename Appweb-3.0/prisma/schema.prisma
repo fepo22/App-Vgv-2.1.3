@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CHOFER
+  OPERADOR
+}
+
+enum RouteStatus {
+  PENDIENTE
+  CERRADA
+  CANCELADA
+}
+
+model User {
+  id           String        @id @default(cuid())
+  username     String        @unique
+  passwordHash String
+  name         String
+  role         Role          @default(CHOFER)
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deliveries   Delivery[]
+  reviews      RouteReview[]
+}
+
+model Truck {
+  id        String   @id @default(cuid())
+  plate     String   @unique
+  plateKey  String   @unique
+  model     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  routes     PurchaseRoute[]
+  deliveries Delivery[]
+  reviews    RouteReview[]
+}
+
+model Supplier {
+  id        String          @id @default(cuid())
+  name      String          @unique
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  routes    PurchaseRoute[]
+}
+
+model PurchaseRoute {
+  id                 String      @id @default(cuid())
+  truckId            String
+  supplierId         String
+  driverName         String?
+  loadEntryDate      DateTime?
+  siteDeliveryDate   DateTime?
+  supplierGuide      String?
+  guidePhotoUrl      String?
+  status             RouteStatus @default(PENDIENTE)
+  sourceRow          Int?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  truck    Truck    @relation(fields: [truckId], references: [id])
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+}
+
+model Delivery {
+  id             String   @id @default(cuid())
+  userId         String
+  truckId        String
+  module         String
+  documentType   String
+  documentNumber String
+  status         String
+  photoUrl       String
+  createdAt      DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  truck Truck @relation(fields: [truckId], references: [id])
+}
+
+model RouteReview {
+  id        String   @id @default(cuid())
+  userId    String
+  truckId   String
+  odometer  String
+  detail    String?
+  photoUrl  String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  truck Truck @relation(fields: [truckId], references: [id])
+}
