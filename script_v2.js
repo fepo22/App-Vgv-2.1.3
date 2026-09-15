@@ -8,9 +8,7 @@ let fotoBase64 = null;
 let moduloActivo = "entregas";
 let compraAsignada = null;
 let revisionRutaCompletaHoy = false;
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzP04DM6clsY4oUASPu3HDRLdFlsjk4EwORNVcYMlC4hNPaPr2W4KsUGNOoecXJIUCr/exec";
-const REVIEW_PASS = "1234";
-const REVIEW_USER_ALIASES = ["admin1", "admin 1"];
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLzZg7nNPgUkrSgjuuRPZrUcREK8LSqHzrxtVKxZ3i5VblRqMeyn8eo00uUyVk-QBY/exec";
 
 document.addEventListener("DOMContentLoaded", () => {
   cargarOpcionesLogin();
@@ -221,41 +219,16 @@ async function doLogin() {
   const patente = document.getElementById("patente").value.trim();
   const btn = document.querySelector(".btn-primary");
   const loginError = document.getElementById("login-error");
-  const normalizedUser = user.toLowerCase();
-  const isReviewUser = REVIEW_USER_ALIASES.includes(normalizedUser);
-  const isLocalReviewHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
   loginError.classList.add("hidden");
 
-  if (!user || !pass) {
+  if (!user || !pass || !patente) {
+    loginError.textContent = "Debes seleccionar usuario, contraseña y patente.";
     loginError.classList.remove("hidden");
     return;
   }
 
-  if (isReviewUser && pass === REVIEW_PASS) {
-    usuarioActivo = {
-      nombre: "Admin Revision",
-      rol: "Administrador",
-      asignacionCompra: null
-    };
-    compraAsignada = null;
-    revisionRutaCompletaHoy = true;
-
-    if (patente) {
-      localStorage.setItem("patente", patente);
-    } else {
-      localStorage.setItem("patente", "REV-00-00");
-    }
-
-    mostrarMenu();
-    return;
-  }
-
-  if (isLocalReviewHost) {
-    alert("Modo revision local: usa usuario admin1 (o admin 1) y clave 1234.");
-    return;
-  }
- // 🔄 Animación de carga
+  // 🔄 Animación de carga
   btn.disabled = true;
   btn.innerHTML = `
     <span class="loader"></span> Espere...
@@ -268,14 +241,20 @@ try {
       body: new URLSearchParams({ data: JSON.stringify(payload) })
     });
     const data = await res.json();
+    console.info("Respuesta login backend", data);
 
     if (data.ok) {
       usuarioActivo = data.usuario;
       compraAsignada = data.usuario.asignacionCompra || null;
+      usuarioActivo.asignacionesCompra = data.usuario.asignacionesCompra || (compraAsignada ? [compraAsignada] : []);
+      if (!compraAsignada && data.usuario.estadoCompra) {
+        console.info("Estado ruta compra", data.usuario.estadoCompra);
+      }
       revisionRutaCompletaHoy = !!data.usuario.revisionRutaCompletaHoy || revisionRutaEstaMarcadaHoy(patente);
       localStorage.setItem("patente", patente);
       mostrarMenu();
     } else {
+      loginError.textContent = data.error || "Usuario o contraseña incorrectos";
       loginError.classList.remove("hidden");
     }
 
@@ -410,9 +389,44 @@ function mostrarMenu() {
     `${ahora.toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" })}<br>${ahora.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}`;
 
   actualizarModuloProveedores();
+  renderRutasComprasMenu();
 
   mostrarRecordatorioRevisionLunes();
   showScreen("screen-menu");
+}
+
+function renderRutasComprasMenu() {
+  const panel = document.getElementById("menu-rutas-compras");
+  if (!panel) return;
+
+  const asignaciones = usuarioActivo && Array.isArray(usuarioActivo.asignacionesCompra)
+    ? usuarioActivo.asignacionesCompra
+    : [];
+
+  if (!asignaciones.length) {
+    panel.classList.add("hidden");
+    panel.innerHTML = "";
+    return;
+  }
+
+  const items = asignaciones.map(asignacion => `
+    <div class="menu-ruta-item">
+      <div>
+        <div class="menu-ruta-proveedor">${escapeHtml(asignacion.proveedor || "Sin proveedor")}</div>
+        <div class="menu-ruta-detalle">Patente ${escapeHtml(asignacion.patente || localStorage.getItem("patente") || "-")}</div>
+      </div>
+      <div class="menu-ruta-fecha">
+        <span>Ingreso a carga</span>
+        <strong>${escapeHtml(asignacion.fechaRetiro || "Sin fecha")}</strong>
+      </div>
+    </div>
+  `).join("");
+
+  panel.classList.remove("hidden");
+  panel.innerHTML = `
+    <div class="menu-rutas-title">Rutas de compra asignadas</div>
+    <div class="menu-rutas-list">${items}</div>
+  `;
 }
 
 function usuarioEsAdministrador() {
@@ -435,33 +449,6 @@ function actualizarModuloProveedores() {
   if (badge) {
     badge.textContent = compraAsignada ? "Ruta asignada" : "Activo";
   }
-}
-
-function renderAsignacionCompra() {
-  const panel = document.getElementById("compras-asignacion");
-  if (!panel) return;
-
-  if (!compraAsignada) {
-    panel.classList.add("hidden");
-    panel.innerHTML = "";
-    return;
-  }
-
-  panel.classList.remove("hidden");
-  panel.innerHTML = `
-    <div class="asignacion-item">
-      <span class="asignacion-label">Proveedor</span>
-      <span class="asignacion-valor">${escapeHtml(compraAsignada.proveedor || "—")}</span>
-    </div>
-    <div class="asignacion-item">
-      <span class="asignacion-label">Retiro</span>
-      <span class="asignacion-valor">${escapeHtml(compraAsignada.fechaRetiro || "—")}</span>
-    </div>
-    <div class="asignacion-item">
-      <span class="asignacion-label">Entrega obra</span>
-      <span class="asignacion-valor">${escapeHtml(compraAsignada.fechaEntregaObra || "—")}</span>
-    </div>
-  `;
 }
 
 function escapeHtml(valor) {
@@ -497,7 +484,6 @@ function goToModule(mod) {
 
   resetFormEntregas(mod);
   showScreen(getFormConfig(mod).screen);
-  if (mod === "proveedores") renderAsignacionCompra();
   activarSeleccionEstado(mod);
 }
 

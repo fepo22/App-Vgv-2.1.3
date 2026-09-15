@@ -10,11 +10,12 @@ const SHEET_LOGIN_ID    = "14dsVF9EppWfPNUBwNssNh3Jvzi55VbvZam1d9dwynwM";
 const SHEET_LOGIN_GID   = 0;
 const HOJA_ENTREGAS     = "Entregas";
 const HOJA_ENTREGAS_GID = 2040395718;
-const PLANILLA_RUTAS_COMPRAS_ID = "1aYEK4dwxhkhlorgjAauH7_Ng1axc-kGrg5HjpTQtZnI";
+const PLANILLA_RUTAS_COMPRAS_ID = "1aYEK4dwxhkhIorgjAauH7_Ng1axc-kGrg5HjpTQtZnI";
 const HOJA_RUTAS_COMPRAS_GID = 0;
-const HOJA_RUTAS_COMPRAS = "Planificacion de Ruta";
+const HOJA_RUTAS_COMPRAS = "Planificacion ruta compras";
 const FOLDER_FOTOS_ID   = "16T8fmZkK_9Oen3i_otL3F2kCofMKkSIP";
 const FOLDER_FOTOS_NAME = "VGV_Fotos_Entregas";
+const BACKEND_VERSION = "vgv-rutas-compras-2026-09-15-01";
 
 // --- Revisión previa de ruta ---
 // Carpeta Drive raíz donde se guardan las fotos del tablero (subcarpetas por chofer)
@@ -68,6 +69,13 @@ function login(data) {
   const password = (data.password || "").toString().trim();
   const patente = (data.patente || "").toString().trim();
 
+  if (!usuario || !password || !patente) {
+    return {
+      ok: false,
+      error: "Faltan datos del login: usuario, contraseña y patente son obligatorios"
+    };
+  }
+
   try {
     const ss = SpreadsheetApp.openById(SHEET_LOGIN_ID);
     const hoja = getHojaLogin(ss);
@@ -81,16 +89,21 @@ function login(data) {
       var rol = (row[3] || "").toString().trim();
 
       if (user === usuario && pass === password) {
-        var asignacionCompra = buscarAsignacionCompraActiva(nombre, patente, usuario);
+        var estadoCompra = evaluarEstadoCompraPatente(patente);
+        var asignacionCompra = estadoCompra.asignacion;
+        var asignacionesCompra = estadoCompra.asignaciones || [];
         var revisionRutaCompletaHoy = buscarRevisionRutaCompletaHoy(nombre, patente);
 
-        logAccion("login", { usuario: usuario });
+        logAccion("login", { usuario: usuario, patente: patente, estadoCompra: estadoCompra.estado });
         return {
           ok: true,
+          version: BACKEND_VERSION,
           usuario: {
             nombre: nombre,
             rol: rol,
             asignacionCompra: asignacionCompra,
+            asignacionesCompra: asignacionesCompra,
+            estadoCompra: estadoCompra,
             revisionRutaCompletaHoy: revisionRutaCompletaHoy
           }
         };
@@ -99,6 +112,7 @@ function login(data) {
 
     return {
       ok: false,
+      version: BACKEND_VERSION,
       error: "Usuario o contraseña incorrectos"
     };
 
@@ -369,6 +383,12 @@ function getHojaEntregas(ss) {
 
 function getHojaRutasCompras(ss) {
   var hojas = ss.getSheets();
+  var nombres = [HOJA_RUTAS_COMPRAS, "Planificación ruta compras", "Planificacion de Ruta", "Planificación de Ruta", "RutasCompras", "Rutas Compras", "Rutas compras", "ComprasRutas", "Compras Rutas"];
+
+  for (var j = 0; j < nombres.length; j++) {
+    var hoja = ss.getSheetByName(nombres[j]);
+    if (hoja) return hoja;
+  }
 
   for (var i = 0; i < hojas.length; i++) {
     if (hojas[i].getSheetId() === HOJA_RUTAS_COMPRAS_GID) {
@@ -376,58 +396,103 @@ function getHojaRutasCompras(ss) {
     }
   }
 
-  var nombres = [HOJA_RUTAS_COMPRAS, "RutasCompras", "Rutas Compras", "Rutas compras", "ComprasRutas", "Compras Rutas"];
-
-  for (var j = 0; j < nombres.length; j++) {
-    var hoja = ss.getSheetByName(nombres[j]);
-    if (hoja) return hoja;
-  }
-
   return hojas[0] || null;
 }
 
-function buscarAsignacionCompraActiva(conductor, patente, usuarioLogin) {
+function evaluarEstadoCompraPatente(patente) {
   try {
     var ss = SpreadsheetApp.openById(PLANILLA_RUTAS_COMPRAS_ID);
     var hoja = getHojaRutasCompras(ss);
-    if (!hoja || hoja.getLastRow() < 2) return null;
+    if (!hoja || hoja.getLastRow() < 2) {
+      return {
+        asignacion: null,
+        asignaciones: [],
+        estado: "sin_planificacion",
+        mensaje: "No hay filas de planificación cargadas"
+      };
+    }
 
     var rows = hoja.getDataRange().getValues();
     var columnas = resolverColumnasRutasCompras(rows[0]);
-    var conductoresEsperados = [normalizarClave(conductor), normalizarClave(usuarioLogin)].filter(function (valor) {
-      return valor.length >= 6;
-    });
     var patenteNormalizada = normalizarClave(patente);
+    var asignacionesPendientes = [];
+    var coincidenciasCerradas = [];
+
+    if (!patenteNormalizada) {
+      return {
+        asignacion: null,
+        asignaciones: [],
+        estado: "sin_patente",
+        mensaje: "No se recibió patente para buscar planificación"
+      };
+    }
 
     for (var i = 1; i < rows.length; i++) {
       var row = rows[i];
       var patenteRuta = normalizarClave(row[columnas.patente]);
-      var conductorRuta = normalizarClave(row[columnas.conductor]);
       var guiaProveedor = (row[columnas.guiaProveedor] || "").toString().trim();
       var fotoGuia = (row[columnas.fotoGuia] || "").toString().trim();
-
       var coincidePatente = patenteNormalizada && patenteRuta === patenteNormalizada;
-      var coincideConductor = conductorRuta.length >= 6 && conductoresEsperados.some(function (valor) {
-        return conductorRuta === valor || conductorRuta.indexOf(valor) !== -1 || valor.indexOf(conductorRuta) !== -1;
-      });
 
-      if ((coincidePatente || coincideConductor) && (!guiaProveedor || !fotoGuia)) {
-        return {
+      if (coincidePatente && (!guiaProveedor || !fotoGuia)) {
+        asignacionesPendientes.push({
           fila: i + 1,
           patente: row[columnas.patente] || "",
           conductor: row[columnas.conductor] || "",
           proveedor: row[columnas.proveedor] || "",
           fechaRetiro: formatearFechaHoja(row[columnas.fechaRetiro]),
           fechaEntregaObra: formatearFechaHoja(row[columnas.fechaEntregaObra])
-        };
+        });
+      }
+
+      if (coincidePatente && guiaProveedor && fotoGuia) {
+        coincidenciasCerradas.push({
+          fila: i + 1,
+          guiaProveedor: guiaProveedor,
+          fotoGuia: fotoGuia
+        });
       }
     }
 
-    return null;
+    if (asignacionesPendientes.length) {
+      return {
+        asignacion: asignacionesPendientes[0],
+        asignaciones: asignacionesPendientes,
+        estado: "asignada",
+        mensaje: "Ruta pendiente encontrada para la patente",
+        fila: asignacionesPendientes[0].fila
+      };
+    }
+
+    if (coincidenciasCerradas.length) {
+      return {
+        asignacion: null,
+        asignaciones: [],
+        estado: "ruta_cerrada",
+        mensaje: "La patente existe en planificación, pero ya tiene guía y foto cargadas",
+        coincidencias: coincidenciasCerradas
+      };
+    }
+
+    return {
+      asignacion: null,
+      asignaciones: [],
+      estado: "sin_ruta_para_patente",
+      mensaje: "No hay planificación para la patente seleccionada"
+    };
   } catch (err) {
-    logError(err, "buscarAsignacionCompraActiva");
-    return null;
+    logError(err, "evaluarEstadoCompraPatente");
+    return {
+      asignacion: null,
+      asignaciones: [],
+      estado: "error",
+      mensaje: err.message
+    };
   }
+}
+
+function buscarAsignacionCompraActiva(conductor, patente, usuarioLogin) {
+  return evaluarEstadoCompraPatente(patente).asignacion;
 }
 
 function actualizarAsignacionCompra(fila, guiaProveedor, fotoGuiaUrl) {
@@ -474,9 +539,6 @@ function diagnosticarRutaCompra(params) {
 
     var rows = hoja.getDataRange().getValues();
     var columnas = resolverColumnasRutasCompras(rows[0] || []);
-    var conductoresEsperados = [normalizarClave(conductor), normalizarClave(usuarioLogin)].filter(function (valor) {
-      return valor.length >= 6;
-    });
     var patenteNormalizada = normalizarClave(patente);
     var filas = [];
 
@@ -487,9 +549,6 @@ function diagnosticarRutaCompra(params) {
       var guiaProveedor = (row[columnas.guiaProveedor] || "").toString().trim();
       var fotoGuia = (row[columnas.fotoGuia] || "").toString().trim();
       var coincidePatente = patenteNormalizada && patenteRuta === patenteNormalizada;
-      var coincideConductor = conductorRuta.length >= 6 && conductoresEsperados.some(function (valor) {
-        return conductorRuta === valor || conductorRuta.indexOf(valor) !== -1 || valor.indexOf(conductorRuta) !== -1;
-      });
 
       if (patenteRuta || conductorRuta || row[columnas.proveedor]) {
         filas.push({
@@ -500,7 +559,7 @@ function diagnosticarRutaCompra(params) {
           guiaProveedor: guiaProveedor,
           fotoGuia: fotoGuia,
           coincidePatente: !!coincidePatente,
-          coincideConductor: !!coincideConductor,
+          coincideConductor: false,
           pendiente: !guiaProveedor || !fotoGuia
         });
       }
@@ -515,6 +574,7 @@ function diagnosticarRutaCompra(params) {
       conductorNormalizado: normalizarClave(conductor),
       usuarioNormalizado: normalizarClave(usuarioLogin),
       patenteNormalizada: patenteNormalizada,
+      estadoCompra: evaluarEstadoCompraPatente(patente),
       asignacion: buscarAsignacionCompraActiva(conductor, patente, usuarioLogin),
       filas: filas.slice(0, 20)
     };
@@ -591,18 +651,18 @@ function completarDosDigitos(valor) {
 }
 
 function getHojaLogin(ss) {
+  var hoja = ss.getSheetByName("Usuarios");
+
+  if (hoja) {
+    return hoja;
+  }
+
   var hojas = ss.getSheets();
 
   for (var i = 0; i < hojas.length; i++) {
     if (hojas[i].getSheetId() === SHEET_LOGIN_GID) {
       return hojas[i];
     }
-  }
-
-  var hoja = ss.getSheetByName("Usuarios");
-
-  if (hoja) {
-    return hoja;
   }
 
   return ss.getSheets()[0];
@@ -753,8 +813,16 @@ function doGet(e) {
       return output.setContent(JSON.stringify(diagnosticarRutaCompra(e.parameter || {})));
     }
 
+    if (action === "version") {
+      return output.setContent(JSON.stringify({
+        ok: true,
+        version: BACKEND_VERSION
+      }));
+    }
+
     return output.setContent(JSON.stringify({
       ok: false,
+      version: BACKEND_VERSION,
       error: "Acción no válida"
     }));
 
@@ -778,9 +846,9 @@ function getUsuarios() {
     const usuarios = [];
 
     for (let i = 1; i < data.length; i++) {
-      const usuario = data[i][0];
-      const nombre = data[i][2];
-      const rol = data[i][3];
+      const usuario = (data[i][0] || "").toString().trim();
+      const nombre = (data[i][2] || "").toString().trim();
+      const rol = (data[i][3] || "").toString().trim();
 
       if (usuario && nombre) {
         usuarios.push({
@@ -810,8 +878,10 @@ function getChoferes() {
       const usuario = data[i][0];
       const nombre = data[i][2];
       const rol = data[i][3];
+      const rolNormalizado = rol ? rol.toString().toLowerCase() : "";
+      const usuarioEsAdminPrueba = usuario && usuario.toString().toLowerCase() === "admin";
 
-      if (rol && rol.toString().toLowerCase().includes("chofer")) {
+      if (rolNormalizado.includes("chofer") || usuarioEsAdminPrueba) {
         choferes.push({
           usuario: usuario,
           nombre: nombre
@@ -838,8 +908,8 @@ function getCamiones() {
     const camiones = [];
 
     for (let i = 1; i < data.length; i++) {
-      const patente = data[i][0];
-      const modelo = data[i][1];
+      const patente = (data[i][0] || "").toString().trim();
+      const modelo = (data[i][1] || "").toString().trim();
 
       if (patente) {
         camiones.push({

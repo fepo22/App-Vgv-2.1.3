@@ -1,4 +1,4 @@
-const CACHE_NAME = "vgv-cache-v1.6";
+const CACHE_NAME = "vgv-cache-v1.8";
 const APP_ROOT = new URL("./", self.registration.scope).pathname;
 
 const urlsToCache = [
