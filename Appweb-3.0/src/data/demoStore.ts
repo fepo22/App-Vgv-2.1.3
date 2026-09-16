@@ -50,6 +50,17 @@ export const purchaseRoutes: PurchaseRoute[] = [
     fechaEntregaObra: "16-09-2026",
     guiaProveedor: "",
     fotoGuia: ""
+  },
+  {
+    id: "route-002",
+    fila: 3,
+    patente: "SWGR-35",
+    conductor: "Roberto Saavedra",
+    proveedor: "Hoffens",
+    fechaRetiro: "16-09-2026",
+    fechaEntregaObra: "17-09-2026",
+    guiaProveedor: "",
+    fotoGuia: ""
   }
 ];
 

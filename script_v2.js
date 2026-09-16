@@ -245,8 +245,16 @@ try {
 
     if (data.ok) {
       usuarioActivo = data.usuario;
-      compraAsignada = data.usuario.asignacionCompra || null;
-      usuarioActivo.asignacionesCompra = data.usuario.asignacionesCompra || (compraAsignada ? [compraAsignada] : []);
+      const estadoCompra = data.usuario.estadoCompra || {};
+      const asignacionesCompra = Array.isArray(data.usuario.asignacionesCompra)
+        ? data.usuario.asignacionesCompra
+        : Array.isArray(estadoCompra.asignaciones)
+          ? estadoCompra.asignaciones
+          : data.usuario.asignacionCompra
+            ? [data.usuario.asignacionCompra]
+            : [];
+      compraAsignada = asignacionesCompra[0] || data.usuario.asignacionCompra || null;
+      usuarioActivo.asignacionesCompra = asignacionesCompra;
       if (!compraAsignada && data.usuario.estadoCompra) {
         console.info("Estado ruta compra", data.usuario.estadoCompra);
       }
