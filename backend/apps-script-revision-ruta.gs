@@ -263,10 +263,8 @@ function registrarRevisionRuta(data) {
       patente,          // E Patente
       itemsOk,          // F Items OK
       totalItems,       // G Total items
-      [
-        "Odómetro: " + odometro,
-        detalle
-      ].filter(Boolean).join(" | ") // H Observaciones
+      odometro,         // H Odometro
+      detalle           // I Detalles
     ]);
 
     logAccion("revision_ruta", {
@@ -304,7 +302,7 @@ function getHojaRevisionRuta(ss) {
 function asegurarEncabezadosRevision(hoja) {
   var encabezados = [
     "Fecha", "Hora", "Chofer", "Rol", "Patente",
-    "Items OK", "Total Items", "Observaciones"
+    "Items OK", "Total items", "Odometro", "Detalles"
   ];
 
   if (hoja.getLastRow() === 0) {
@@ -317,7 +315,7 @@ function asegurarEncabezadosRevision(hoja) {
   var actuales = rangoEncabezados.getValues()[0];
 
   for (var i = 0; i < encabezados.length; i++) {
-    if (!actuales[i]) {
+    if (!actuales[i] || i === 6 || i === 7 || i === 8) {
       hoja.getRange(1, i + 1).setValue(encabezados[i]);
     }
   }
