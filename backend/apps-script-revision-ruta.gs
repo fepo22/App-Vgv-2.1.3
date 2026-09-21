@@ -21,8 +21,8 @@ const BACKEND_VERSION = "vgv-rutas-compras-2026-09-15-01";
 // Carpeta Drive raíz donde se guardan las fotos del tablero (subcarpetas por chofer)
 const FOLDER_REVISION_ID     = "1WpoNqXDleXScuF6NJmdRucPIanzzKmen";
 // Planilla donde se registra cada revisión
-const PLANILLA_REVISION_ID   = "1HMYpFplf3eYdeo2OGsyluBsS7OoOn-OCL50_41l9fEU";
-const HOJA_REVISION_RUTA     = "RevisionRuta";
+const PLANILLA_REVISION_ID   = PLANILLA_RUTAS_COMPRAS_ID;
+const HOJA_REVISION_RUTA     = "Registro Semanal";
 
 // ============================================================
 // ENTRYPOINT POST
@@ -262,9 +262,10 @@ function registrarRevisionRuta(data) {
       patente,          // E Patente
       itemsOk,          // F Items OK
       totalItems,       // G Total items
-      odometro,         // H Odómetro
-      detalle,          // I Detalle
-      file.getUrl()     // J Foto tablero (link)
+      [
+        "Odómetro: " + odometro,
+        detalle
+      ].filter(Boolean).join(" | ") // H Observaciones
     ]);
 
     logAccion("revision_ruta", {
@@ -294,7 +295,7 @@ function getHojaRevisionRuta(ss) {
 function asegurarEncabezadosRevision(hoja) {
   var encabezados = [
     "Fecha", "Hora", "Chofer", "Rol", "Patente",
-    "Items OK", "Total items", "Odómetro", "Detalle", "Foto tablero (link)"
+    "Items OK", "Total Items", "Observaciones"
   ];
 
   if (hoja.getLastRow() === 0) {
