@@ -8,7 +8,7 @@ let fotoBase64 = null;
 let moduloActivo = "entregas";
 let compraAsignada = null;
 let revisionRutaCompletaHoy = false;
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLzZg7nNPgUkrSgjuuRPZrUcREK8LSqHzrxtVKxZ3i5VblRqMeyn8eo00uUyVk-QBY/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_X7VjQ0s1Xr25wtyp9T-9GTS4CvVRPNjZGGEe3mTWwjOi_e4WHFmgbpDcQ3w5zXCZ/exec";
 
 document.addEventListener("DOMContentLoaded", () => {
   cargarOpcionesLogin();

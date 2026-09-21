@@ -15,13 +15,14 @@ const HOJA_RUTAS_COMPRAS_GID = 0;
 const HOJA_RUTAS_COMPRAS = "Planificacion ruta compras";
 const FOLDER_FOTOS_ID   = "16T8fmZkK_9Oen3i_otL3F2kCofMKkSIP";
 const FOLDER_FOTOS_NAME = "VGV_Fotos_Entregas";
-const BACKEND_VERSION = "vgv-rutas-compras-2026-09-15-01";
+const BACKEND_VERSION = "vgv-rutas-compras-2026-09-21-01";
 
 // --- Revisión previa de ruta ---
 // Carpeta Drive raíz donde se guardan las fotos del tablero (subcarpetas por chofer)
 const FOLDER_REVISION_ID     = "1WpoNqXDleXScuF6NJmdRucPIanzzKmen";
-// Planilla donde se registra cada revisión
-const PLANILLA_REVISION_ID   = PLANILLA_RUTAS_COMPRAS_ID;
+// Planilla y pestaña fijas para el registro semanal de revisión/odómetro
+const PLANILLA_REVISION_ID   = "1aYEK4dwxhkhIorgjAauH7_Ng1axc-kGrg5HjpTQtZnI";
+const HOJA_REVISION_RUTA_GID = 1864945872;
 const HOJA_REVISION_RUTA     = "Registro Semanal";
 
 // ============================================================
@@ -288,6 +289,14 @@ function registrarRevisionRuta(data) {
 }
 
 function getHojaRevisionRuta(ss) {
+  var hojas = ss.getSheets();
+
+  for (var i = 0; i < hojas.length; i++) {
+    if (hojas[i].getSheetId() === HOJA_REVISION_RUTA_GID) {
+      return hojas[i];
+    }
+  }
+
   var hoja = ss.getSheetByName(HOJA_REVISION_RUTA);
   return hoja ? hoja : ss.insertSheet(HOJA_REVISION_RUTA);
 }
