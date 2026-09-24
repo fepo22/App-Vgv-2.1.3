@@ -164,12 +164,12 @@ async function cargarUsuariosLogin() {
   if (!select) return;
 
   try {
-    const res = await fetch(`${APPS_SCRIPT_URL}?action=getUsuarios`);
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=getUsuarios&_=${Date.now()}`, { cache: "no-store" });
     const data = await res.json();
     let usuarios = data.ok && data.usuarios ? data.usuarios : [];
 
     if (!usuarios.length) {
-      const fallbackRes = await fetch(`${APPS_SCRIPT_URL}?action=getChoferes`);
+      const fallbackRes = await fetch(`${APPS_SCRIPT_URL}?action=getChoferes&_=${Date.now()}`, { cache: "no-store" });
       const fallbackData = await fallbackRes.json();
       usuarios = fallbackData.ok && fallbackData.choferes ? fallbackData.choferes : [];
     }
@@ -188,7 +188,7 @@ async function cargarPatentesLogin() {
   if (!select) return;
 
   try {
-    const res = await fetch(`${APPS_SCRIPT_URL}?action=getCamiones`);
+    const res = await fetch(`${APPS_SCRIPT_URL}?action=getCamiones&_=${Date.now()}`, { cache: "no-store" });
     const data = await res.json();
     const camiones = data.ok && data.camiones ? data.camiones : [];
 
